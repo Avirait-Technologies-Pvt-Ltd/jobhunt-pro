@@ -1,0 +1,132 @@
+# ================================
+# Release Workflow
+# ================================
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+jobs:
+  # --------------------------------
+  # Semantic Release
+  # --------------------------------
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'release')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Generate changelog from commits
+          echo "## What's Changed" > CHANGELOG_ENTRY.md
+          echo "" >> CHANGELOG_ENTRY.md
+          git log $(git describe --tags --abbrev=0 2>/dev/null || echo "")..HEAD --pretty=format:"* %s (%h)" >> CHANGELOG_ENTRY.md || echo "* Initial release" >> CHANGELOG_ENTRY.md
+          echo "" >> CHANGELOG_ENTRY.md
+          cat CHANGELOG_ENTRY.md
+
+      - name: Get next version
+        id: version
+        run: |
+          # Get current version from package.json
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+
+          # Determine version bump based on commits
+          if git log --oneline $(git describe --tags --abbrev=0 2>/dev/null || echo "")..HEAD | grep -qE "^[a-f0-9]+ (feat|feature)"; then
+            # Minor version bump for features
+            NEW_VERSION=$(echo $CURRENT_VERSION | awk -F. '{print $1"."$2+1".0"}')
+          elif git log --oneline $(git describe --tags --abbrev=0 2>/dev/null || echo "")..HEAD | grep -qE "^[a-f0-9]+ (fix|bugfix)"; then
+            # Patch version bump for fixes
+            NEW_VERSION=$(echo $CURRENT_VERSION | awk -F. '{print $1"."$2"."$3+1}')
+          else
+            # Default patch bump
+            NEW_VERSION=$(echo $CURRENT_VERSION | awk -F. '{print $1"."$2"."$3+1}')
+          fi
+
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "next=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update version in package.json
+        run: |
+          npm version ${{ steps.version.outputs.next }} --no-git-tag-version
+
+      - name: Commit version bump
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add package.json package-lock.json
+          git commit -m "chore(release): v${{ steps.version.outputs.next }}"
+          git push
+
+      - name: Create and push tag
+        run: |
+          git tag -a "v${{ steps.version.outputs.next }}" -m "Release v${{ steps.version.outputs.next }}"
+          git push origin "v${{ steps.version.outputs.next }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.next }}
+          name: Release v${{ steps.version.outputs.next }}
+          body_path: CHANGELOG_ENTRY.md
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+
+  # --------------------------------
+  # Release Please (Alternative)
+  # --------------------------------
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Release Please
+        uses: google-github-actions/release-please-action@v4
+        with:
+          release-type: node
+          package-name: jobhunt-pro
+          changelog-types: |
+            [
+              {"type": "feat", "section": "Features"},
+              {"type": "fix", "section": "Bug Fixes"},
+              {"type": "perf", "section": "Performance"},
+              {"type": "refactor", "section": "Code Refactoring"},
+              {"type": "docs", "section": "Documentation"},
+              {"type": "test", "section": "Tests"},
+              {"type": "ci", "section": "CI/CD"},
+              {"type": "chore", "section": "Miscellaneous"}
+            ]
