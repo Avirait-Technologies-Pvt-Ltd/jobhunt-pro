@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   MapPin,
   Clock,
@@ -25,12 +26,13 @@ interface JobCardProps {
 
 export default function JobCard({ job, variant = 'default' }: JobCardProps) {
   const { isAuthenticated, saveJob, unsaveJob, isJobSaved, isJobApplied } = useAuth();
+  const router = useRouter();
 
   const handleSaveJob = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!isAuthenticated) {
-      window.location.href = '/signin';
+      router.push('/signin');
       return;
     }
     if (isJobSaved(job.id)) {
