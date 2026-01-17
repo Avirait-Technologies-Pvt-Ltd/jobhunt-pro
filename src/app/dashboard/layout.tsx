@@ -15,6 +15,7 @@ import {
   X,
   Bell,
   ChevronRight,
+  GraduationCap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -49,6 +50,11 @@ const sidebarLinks = [
     label: 'Resume Builder',
     href: '/dashboard/resume',
     icon: FileText,
+  },
+  {
+    label: 'Interview Prep',
+    href: '/dashboard/interview-prep',
+    icon: GraduationCap,
   },
   {
     label: 'Settings',
