@@ -60,12 +60,17 @@ describe('Assessment Engine - useSkillAssessment Hook', () => {
     it('should fail to start session with invalid assessment ID', () => {
       const { result } = renderHook(() => useSkillAssessment());
 
+      // Suppress expected console.error for invalid assessment
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
       act(() => {
         const success = result.current.startSession('invalid-assessment', 'user-1');
         expect(success).toBe(false);
       });
 
       expect(result.current.session).toBeNull();
+      expect(consoleSpy).toHaveBeenCalledWith('Assessment not found:', 'invalid-assessment');
+      consoleSpy.mockRestore();
     });
 
     it('should set the first question as current', () => {
