@@ -16,6 +16,7 @@ import {
   Bell,
   ChevronRight,
   GraduationCap,
+  TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -55,6 +56,11 @@ const sidebarLinks = [
     label: 'Interview Prep',
     href: '/dashboard/interview-prep',
     icon: GraduationCap,
+  },
+  {
+    label: 'Market Insights',
+    href: '/dashboard/market-insights',
+    icon: TrendingUp,
   },
   {
     label: 'Settings',
